@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1500">
+<title>Mundial 2026</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  width: 1500px;
+  height: 500px;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Arial Black', Arial, sans-serif;
+}
+
+/* ══════════════════════════════
+   FONDO BANDERA ARGENTINA
+══════════════════════════════ */
+.bg-flag {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 0;
+}
+.f-cel { flex:1; background:#74ACDF; }
+.f-wht { flex:1; background:#FFFFFF; }
+.f-cel2{ flex:1; background:#74ACDF; }
+
+.sol-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.sol { width:210px; height:210px; opacity:0.15; }
+
+/* ══════════════════════════════
+   VISTA A: PARTIDO EN VIVO / PRÓXIMO
+══════════════════════════════ */
+#vistaPartido {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ══════════════════════════════
+   VISTA B: GRILLA DE PARTIDOS DEL DÍA
+══════════════════════════════ */
+#vistaGrilla {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ══ CARD NEGRA COMPARTIDA ══ */
+.card {
+  position: relative;
+  background: #080808;
+  border-top: 7px solid #C9A227;
+  border-bottom: 7px solid #C9A227;
+  border-left: 3px solid #C9A227;
+  border-right: 3px solid #C9A227;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Textura 26 */
+.bg26 {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  opacity: 0.032;
+  font-size: 66px;
+  font-weight: 900;
+  color: #fff;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: -1px;
+  overflow: hidden;
+}
+.n26 { display:flex; align-items:center; justify-content:center; }
+
+/* ══ CARD PARTIDO (vista A) ══ */
+.card-partido {
+  width: 1180px;
+  height: 390px;
+}
+.card-partido .bg26 { grid-template-columns:repeat(13,1fr); grid-template-rows:repeat(4,1fr); }
+
+.partido-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+}
+.wc-badge {
+  background: #C9A227;
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding: 5px 18px;
+  text-transform: uppercase;
+}
+.fase-txt {
+  color: #C9A227;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+}
+.live-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  color: #ff3333;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-family: Arial, sans-serif;
+}
+.live-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #ff3333;
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+.partido-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.equipo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 370px;
+}
+.equipo-logo {
+  width: 120px;
+  height: 80px;
+  object-fit: contain;
+}
+.equipo-nombre {
+  color: #fff;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.sep-v {
+  width: 2px;
+  height: 190px;
+  background: linear-gradient(180deg, transparent, #C9A227 25%, #C9A227 75%, transparent);
+  margin: 0 8px;
+}
+
+.scorebox {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.score-row { display:flex; align-items:center; }
+.score-n {
+  color: #fff;
+  font-size: 120px;
+  font-weight: 900;
+  line-height: 1;
+  width: 100px;
+  text-align: center;
+}
+.score-guion {
+  color: #C9A227;
+  font-size: 100px;
+  font-weight: 900;
+  line-height: 1;
+  padding-bottom: 8px;
+}
+.score-clock {
+  color: #C9A227;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-family: Arial, sans-serif;
+}
+.vs-txt { color:#C9A227; font-size:72px; font-weight:900; letter-spacing:6px; line-height:1; }
+.ko-hora { color:#fff; font-size:24px; font-weight:700; letter-spacing:2px; font-family:Arial,sans-serif; margin-top:6px; }
+.ko-fecha { color:#666; font-size:12px; letter-spacing:2px; text-transform:uppercase; font-family:Arial,sans-serif; margin-top:4px; }
+
+/* ══ CARD GRILLA (vista B) ══ */
+.card-grilla {
+  width: 1380px;
+  height: 430px;
+  padding: 0 30px;
+}
+.card-grilla .bg26 { grid-template-columns:repeat(15,1fr); grid-template-rows:repeat(4,1fr); }
+
+.grilla-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+.grilla-titulo {
+  color: #C9A227;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+}
+.grilla-fecha {
+  color: #555;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  margin-left: auto;
+}
+
+/* Grilla de partidos */
+.partidos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+/* Celda de partido */
+.partido-cell {
+  background: #111;
+  border: 1px solid #222;
+  border-left: 3px solid #C9A227;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
+  height: 96px;
+}
+
+.partido-cell.en-vivo {
+  border-left-color: #ff3333;
+  background: #140000;
+}
+.partido-cell.terminado {
+  border-left-color: #333;
+  opacity: 0.75;
+}
+
+.cell-hora {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 62px;
+}
+.hora-txt {
+  color: #C9A227;
+  font-size: 18px;
+  font-weight: 900;
+  font-family: Arial, sans-serif;
+  letter-spacing: 1px;
+}
+.hora-txt.vivo { color: #ff3333; }
+.estado-txt {
+  color: #555;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  margin-top: 2px;
+}
+.estado-txt.vivo { color: #ff3333; }
+
+.cell-sep {
+  width: 1px;
+  height: 70px;
+  background: #2a2a2a;
+}
+
+.cell-equipos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cell-equipo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cell-logo {
+  width: 32px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.cell-nombre {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-gol {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  width: 24px;
+  text-align: center;
+}
+.cell-gol.destacado { color: #C9A227; }
+
+.cell-grupo {
+  color: #444;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+  min-width: 55px;
+  text-align: right;
+}
+
+/* Footer */
+.footer {
+  position: fixed;
+  bottom: 12px;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  z-index: 20;
+}
+.footer-txt {
+  color: rgba(0,0,0,0.4);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+}
+</style>
+</head>
+<body>
+
+<!-- Fondo bandera -->
+<div class="bg-flag">
+  <div class="f-cel"></div>
+  <div class="f-wht"></div>
+  <div class="f-cel2"></div>
+</div>
+
+<!-- Sol de Mayo -->
+<div class="sol-wrap">
+  <svg class="sol" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(100,100)">
+      <g stroke="#F6B40E" stroke-width="6" stroke-linecap="round">
+        <line x1="0" y1="-55" x2="0" y2="-90"/>
+        <line x1="0" y1="55" x2="0" y2="90"/>
+        <line x1="-55" y1="0" x2="-90" y2="0"/>
+        <line x1="55" y1="0" x2="90" y2="0"/>
+        <line x1="-39" y1="-39" x2="-64" y2="-64"/>
+        <line x1="39" y1="-39" x2="64" y2="-64"/>
+        <line x1="-39" y1="39" x2="-64" y2="64"/>
+        <line x1="39" y1="39" x2="64" y2="64"/>
+      </g>
+      <g fill="#F6B40E">
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(22.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(67.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(112.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(157.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(202.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(247.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(292.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(337.5)"/>
+      </g>
+      <circle r="44" fill="#F6B40E"/>
+      <circle r="40" fill="#F6B40E" stroke="#85450A" stroke-width="1.5"/>
+      <ellipse cx="-13" cy="-10" rx="5" ry="7" fill="#85450A"/>
+      <ellipse cx="13" cy="-10" rx="5" ry="7" fill="#85450A"/>
+      <ellipse cx="0" cy="2" rx="4" ry="3" fill="#85450A"/>
+      <path d="M-14,14 Q0,24 14,14" stroke="#85450A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="-22" cy="8" r="6" fill="#E8960A" opacity="0.5"/>
+      <circle cx="22" cy="8" r="6" fill="#E8960A" opacity="0.5"/>
+    </g>
+  </svg>
+</div>
+
+<!-- VISTA A: Partido en vivo / próximo -->
+<div id="vistaPartido" style="display:none; position:absolute; inset:0; z-index:10; display:none; align-items:center; justify-content:center;">
+  <div class="card card-partido">
+    <div class="bg26" id="bg26A"></div>
+    <div class="partido-header">
+      <div class="wc-badge">FIFA World Cup 2026™</div>
+      <div class="fase-txt" id="faseTxt">Fase de Grupos</div>
+      <div class="live-badge" id="liveBadge"><div class="live-dot"></div>EN VIVO</div>
+    </div>
+    <div class="partido-row">
+      <div class="equipo">
+        <img class="equipo-logo" id="logoHome" src="" alt="">
+        <div class="equipo-nombre" id="nombreHome">—</div>
+      </div>
+      <div class="sep-v"></div>
+      <div class="scorebox" id="scorebox"></div>
+      <div class="sep-v"></div>
+      <div class="equipo">
+        <img class="equipo-logo" id="logoAway" src="" alt="">
+        <div class="equipo-nombre" id="nombreAway">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VISTA B: Grilla de partidos del día -->
+<div id="vistaGrilla" style="display:none; position:absolute; inset:0; z-index:10; display:none; align-items:center; justify-content:center;">
+  <div class="card card-grilla">
+    <div class="bg26" id="bg26B"></div>
+    <div class="grilla-header">
+      <div class="wc-badge">FIFA World Cup 2026™</div>
+      <div class="grilla-titulo">Partidos de hoy</div>
+      <div class="grilla-fecha" id="fechaHoy"></div>
+    </div>
+    <div class="partidos-grid" id="partidosGrid"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-txt">Municipalidad de El Calafate</div>
+  <div class="footer-txt">·</div>
+  <div class="footer-txt" id="reloj"></div>
+</div>
+
+<script>
+const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const HORAS_ANTES   = 2;
+const HORAS_DESPUES = 1;
+
+/* ── Textura 26 ── */
+function llenarBg26(id, cols, rows) {
+  const el = document.getElementById(id);
+  el.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+  el.style.gridTemplateRows    = `repeat(${rows},1fr)`;
+  for (let i = 0; i < cols * rows; i++) {
+    const d = document.createElement('div');
+    d.className = 'n26';
+    d.textContent = '26';
+    el.appendChild(d);
+  }
+}
+llenarBg26('bg26A', 13, 4);
+llenarBg26('bg26B', 15, 4);
+
+/* ── Reloj ── */
+function tick() {
+  document.getElementById('reloj').textContent =
+    new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+}
+setInterval(tick, 1000); tick();
+
+/* ── Constantes de fecha ── */
+const DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function horaAR(dateStr) {
+  const d = new Date(dateStr);
+  /* UTC-3 */
+  const ar = new Date(d.getTime() - 3 * 3600000);
+  const h  = ar.getUTCHours().toString().padStart(2,'0');
+  const m  = ar.getUTCMinutes().toString().padStart(2,'0');
+  return `${h}:${m}`;
+}
+
+function fechaLarga(date) {
+  const d = new Date(date.getTime() - 3 * 3600000);
+  return `${DIAS[d.getUTCDay()]}, ${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`;
+}
+
+/* ── Fases ── */
+const FASES = {
+  'group-stage':'Fase de Grupos','group stage':'Fase de Grupos',
+  'round of 32':'Ronda de 32','round-of-32':'Ronda de 32',
+  'round of 16':'Octavos de Final','round-of-16':'Octavos de Final',
+  'quarterfinals':'Cuartos de Final','semifinals':'Semifinales',
+  '3rd-place':'Tercer Puesto','final':'Final',
+};
+function traducirFase(slug) {
+  if (!slug) return 'Copa del Mundo 2026';
+  const s = slug.toLowerCase();
+  for (const [k,v] of Object.entries(FASES)) if (s.includes(k)) return v;
+  return slug;
+}
+
+/* ── Render vista A: partido ── */
+function mostrarPartido(match) {
+  document.getElementById('vistaGrilla').style.display = 'none';
+  const vp = document.getElementById('vistaPartido');
+  vp.style.display = 'flex';
+
+  document.getElementById('logoHome').src    = match.logoHome;
+  document.getElementById('logoAway').src    = match.logoAway;
+  document.getElementById('nombreHome').textContent = match.nameHome.toUpperCase();
+  document.getElementById('nombreAway').textContent = match.nameAway.toUpperCase();
+  document.getElementById('faseTxt').textContent    = match.fase;
+
+  const isLive = match.state === 'in';
+  const isPre  = match.state === 'pre';
+  document.getElementById('liveBadge').style.display = isLive ? 'flex' : 'none';
+
+  const box = document.getElementById('scorebox');
+  if (isPre) {
+    const hora  = horaAR(match.date);
+    const fecha = fechaLarga(new Date(match.date));
+    box.innerHTML = `
+      <div class="vs-txt">VS</div>
+      <div class="ko-hora">${hora} hs</div>
+      <div class="ko-fecha">${fecha}</div>`;
+  } else {
+    const etiq = isLive ? match.clock : 'Final';
+    box.innerHTML = `
+      <div class="score-row">
+        <div class="score-n">${match.homeScore}</div>
+        <div class="score-guion">-</div>
+        <div class="score-n">${match.awayScore}</div>
+      </div>
+      <div class="score-clock">${etiq}</div>`;
+  }
+}
+
+/* ── Render vista B: grilla ── */
+function mostrarGrilla(events) {
+  document.getElementById('vistaPartido').style.display = 'none';
+  const vg = document.getElementById('vistaGrilla');
+  vg.style.display = 'flex';
+
+  /* Fecha de hoy en AR */
+  document.getElementById('fechaHoy').textContent = fechaLarga(new Date()).toUpperCase();
+
+  const grid = document.getElementById('partidosGrid');
+  grid.innerHTML = '';
+
+  /* Máximo 6 celdas (2 filas × 3 cols) */
+  const lista = events.slice(0, 6);
+
+  /* Si hay menos de 4, mostrar en 2 columnas para que no quede raro */
+  if (lista.length <= 2) {
+    grid.style.gridTemplateColumns = 'repeat(2,1fr)';
+  } else if (lista.length <= 4) {
+    grid.style.gridTemplateColumns = 'repeat(2,1fr)';
+  } else {
+    grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+  }
+
+  for (const e of lista) {
+    const c    = e.competitions[0];
+    const home = c.competitors.find(x => x.homeAway === 'home') || {};
+    const away = c.competitors.find(x => x.homeAway === 'away') || {};
+    const state = c.status?.type?.state;
+    const isLive = state === 'in';
+    const isFT   = state === 'post';
+    const clock  = c.status?.displayClock || '';
+    const hora   = horaAR(e.date);
+    const fase   = traducirFase(e.season?.slug || '');
+
+    /* Etiqueta de hora/estado */
+    let horaLabel, horaClass, estadoLabel, estadoClass;
+    if (isLive) {
+      horaLabel  = clock;
+      horaClass  = 'hora-txt vivo';
+      estadoLabel = 'EN VIVO';
+      estadoClass = 'estado-txt vivo';
+    } else if (isFT) {
+      horaLabel  = hora;
+      horaClass  = 'hora-txt';
+      estadoLabel = 'Final';
+      estadoClass = 'estado-txt';
+    } else {
+      horaLabel  = hora;
+      horaClass  = 'hora-txt';
+      estadoLabel = 'hs';
+      estadoClass = 'estado-txt';
+    }
+
+    const cellClass = isLive ? 'partido-cell en-vivo' : isFT ? 'partido-cell terminado' : 'partido-cell';
+
+    const homeGol = (isLive || isFT) ? `<div class="cell-gol ${isLive?'destacado':''}">${home.score ?? 0}</div>` : '';
+    const awayGol = (isLive || isFT) ? `<div class="cell-gol ${isLive?'destacado':''}">${away.score ?? 0}</div>` : '';
+
+    grid.innerHTML += `
+      <div class="${cellClass}">
+        <div class="cell-hora">
+          <div class="${horaClass}">${horaLabel}</div>
+          <div class="${estadoClass}">${estadoLabel}</div>
+        </div>
+        <div class="cell-sep"></div>
+        <div class="cell-equipos">
+          <div class="cell-equipo">
+            <img class="cell-logo" src="${home.team?.logo||''}" alt="">
+            <div class="cell-nombre">${(home.team?.displayName||'').toUpperCase()}</div>
+            ${homeGol}
+          </div>
+          <div class="cell-equipo">
+            <img class="cell-logo" src="${away.team?.logo||''}" alt="">
+            <div class="cell-nombre">${(away.team?.displayName||'').toUpperCase()}</div>
+            ${awayGol}
+          </div>
+        </div>
+        <div class="cell-grupo">${fase.replace('Fase de ','').replace('Grupos','GRUPOS')}</div>
+      </div>`;
+  }
+}
+
+/* ── Lógica principal ── */
+async function fetchAndRender() {
+  try {
+    const res    = await fetch(ESPN);
+    const data   = await res.json();
+    const events = data.events || [];
+    const now    = Date.now();
+    let matchDestacado = null;
+
+    /* 1. Buscar partido en vivo */
+    for (const e of events) {
+      const c = e.competitions?.[0];
+      if (c?.status?.type?.state === 'in') {
+        matchDestacado = buildMatch(e, c);
+        break;
+      }
+    }
+
+    /* 2. Si no, buscar próximo en HORAS_ANTES */
+    if (!matchDestacado) {
+      for (const e of events) {
+        const c = e.competitions?.[0];
+        if (c?.status?.type?.state !== 'pre') continue;
+        const diff = (new Date(e.date) - now) / 3600000;
+        if (diff >= 0 && diff <= HORAS_ANTES) {
+          matchDestacado = buildMatch(e, c);
+          break;
+        }
+      }
+    }
+
+    /* 3. Si no, buscar recién terminado en HORAS_DESPUES */
+    if (!matchDestacado) {
+      for (const e of [...events].reverse()) {
+        const c = e.competitions?.[0];
+        if (c?.status?.type?.state !== 'post') continue;
+        const diff = (now - new Date(e.date)) / 3600000;
+        if (diff >= 0 && diff <= HORAS_DESPUES) {
+          matchDestacado = buildMatch(e, c);
+          break;
+        }
+      }
+    }
+
+    if (matchDestacado) {
+      mostrarPartido(matchDestacado);
+    } else if (events.length > 0) {
+      mostrarGrilla(events);
+    }
+    /* Si no hay partidos hoy → ambas vistas quedan hidden (pantalla solo bandera) */
+
+  } catch(err) {
+    console.error('ESPN error:', err);
+  }
+}
+
+function buildMatch(e, c) {
+  const home = c.competitors?.find(x => x.homeAway === 'home') || {};
+  const away = c.competitors?.find(x => x.homeAway === 'away') || {};
+  return {
+    date:      e.date,
+    state:     c.status?.type?.state,
+    clock:     c.status?.displayClock || '',
+    homeScore: home.score ?? 0,
+    awayScore: away.score ?? 0,
+    nameHome:  home.team?.displayName || 'Local',
+    nameAway:  away.team?.displayName || 'Visitante',
+    logoHome:  home.team?.logo || '',
+    logoAway:  away.team?.logo || '',
+    fase:      traducirFase(e.season?.slug || ''),
+  };
+}
+
+fetchAndRender();
+setInterval(fetchAndRender, 30000);
+</script>
+</body>
+</html>
