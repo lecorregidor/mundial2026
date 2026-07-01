@@ -191,13 +191,14 @@ body {
 .partido-header { display:flex; align-items:center; gap:18px; margin-bottom:20px; position:relative; z-index:2; }
 .wc-badge { background:#C9A227; color:#000; font-size:11px; font-weight:900; letter-spacing:3px; padding:5px 18px; text-transform:uppercase; }
 .fase-txt { color:#C9A227; font-size:13px; font-weight:700; letter-spacing:3px; text-transform:uppercase; font-family:Arial,sans-serif; }
-.live-badge { display:none; align-items:center; gap:8px; color:#ff3333; font-size:12px; font-weight:900; letter-spacing:2px; font-family:Arial,sans-serif; }
-.live-dot { width:9px; height:9px; border-radius:50%; background:#ff3333; animation:blink 1s ease-in-out infinite; }
+.live-badge { display:none; align-items:center; gap:10px; background:rgba(255,0,0,0.15); border:2px solid #ff3333; padding:6px 18px; }
+.live-dot { width:12px; height:12px; border-radius:50%; background:#ff3333; animation:blink 1s ease-in-out infinite; flex-shrink:0; }
+.live-badge span { color:#ff3333; font-size:20px; font-weight:900; letter-spacing:3px; font-family:'Arial Black',Arial,sans-serif; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
 .partido-row { display:flex; align-items:center; justify-content:center; width:100%; position:relative; z-index:2; }
 .equipo { display:flex; flex-direction:column; align-items:center; gap:12px; width:370px; }
-.equipo-logo { width:120px; height:80px; object-fit:contain; }
+.equipo-logo { width:160px; height:106px; object-fit:contain; }
 .equipo-nombre { color:#fff; font-size:30px; font-weight:900; letter-spacing:3px; text-transform:uppercase; text-align:center; line-height:1.2; }
 .sep-v { width:2px; height:190px; background:linear-gradient(180deg,transparent,#C9A227 25%,#C9A227 75%,transparent); margin:0 8px; }
 .scorebox { width:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
@@ -321,8 +322,7 @@ body {
     <div class="bg26" id="bg26A"></div>
     <div class="partido-header">
       <div class="wc-badge">FIFA World Cup 2026™</div>
-      <div class="fase-txt" id="faseTxt">Fase de Grupos</div>
-      <div class="live-badge" id="liveBadge"><div class="live-dot"></div>EN VIVO</div>
+      <div class="live-badge" id="liveBadge"><div class="live-dot"></div><span>EN VIVO</span></div>
     </div>
     <div class="partido-row">
       <div class="equipo"><img class="equipo-logo" id="logoHome" src="" alt=""><div class="equipo-nombre" id="nombreHome">—</div></div>
@@ -501,7 +501,793 @@ function tradEquipo(abbr, displayName) {
 }
 
 /* Fases */
-const FASES = {'group-stage':'Fase de Grupos','round of 32':'Ronda de 32','round-of-32':'Ronda de 32','round of 16':'Octavos de Final','round-of-16':'Octavos de Final','quarterfinals':'Cuartos de Final','semifinals':'Semifinales','3rd-place':'Tercer Puesto','final':'Final'};
+const FASES = {
+  'group-stage':'Fase de Grupos','group stage':'Fase de Grupos',
+  'round-of-32':'16avos de Final','round of 32':'16avos de Final',
+  'round-of-16':'8vos de Final','round of 16':'8vos de Final',
+  'quarterfinal':'4tos de Final','quarter-final':'4tos de Final',
+  'semifinal':'Semifinal','semi-final':'Semifinal',
+  '3rd':'3er Puesto','third':'3er Puesto',
+  'final':'Final',
+};
+function traducirFase(slug) {
+  if (!slug) return 'Copa del Mundo 2026';
+  const s = slug.toLowerCase();
+  for (const [k,v] of Object.entries(FASES)) if (s.includes(k)) return v;
+  return slug;
+}
+
+/* ── Countdown ── */
+let countdownInterval = null;
+function iniciarCountdown(dateStr) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  function render() {
+    const diff = Math.max(0, new Date(dateStr) - Date.now());
+    const h  = Math.floor(diff / 3600000);
+    const m  = Math.floor((diff % 3600000) / 60000);
+    const s  = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cdH').textContent  = h.toString().padStart(2,'0');
+    document.getElementById('cdM').textContent  = m.toString().padStart(2,'0');
+    document.getElementById('cdS').textContent  = s.toString().padStart(2,'0');
+  }
+  render();
+  countdownInterval = setInterval(render, 1000);
+}
+
+/* ── Vista Argentina ── */
+function mostrarArgentina(match) {
+  ocultarTodo();
+  document.getElementById('vistaArg').classList.add('activa');
+
+  /* Determinar cuál equipo es Argentina */
+  const homeEsArg = esArgentina({displayName: match.nameHome, abbreviation: match.abbrHome});
+  const argNombre = homeEsArg ? match.nameHome : match.nameAway;
+  const rivNombre = homeEsArg ? match.nameAway : match.nameHome;
+  const argLogo   = homeEsArg ? match.logoHome : match.logoAway;
+  const rivLogo   = homeEsArg ? match.logoAway : match.logoHome;
+  const argScore  = homeEsArg ? match.homeScore : match.awayScore;
+  const rivScore  = homeEsArg ? match.awayScore : match.homeScore;
+
+  /* Argentina siempre a la izquierda */
+  document.getElementById('argLogoHome').src   = argLogo;
+  document.getElementById('argLogoAway').src   = rivLogo;
+  document.getElementById('argNombreHome').textContent = 'ARGENTINA';
+  document.getElementById('argNombreHome').classList.add('arg-team');
+  document.getElementById('argNombreAway').textContent = rivNombre.toUpperCase();
+  document.getElementById('argNombreAway').classList.remove('arg-team');
+  document.getElementById('argFase').textContent = match.fase;
+
+  const isLive = match.state === 'in';
+  const isFT   = match.state === 'post';
+  const isPre  = match.state === 'pre';
+  document.getElementById('argLive').style.display = isLive ? 'flex' : 'none';
+
+  const box = document.getElementById('argScorebox');
+  if (isPre) {
+    const hora  = horaAR(match.date);
+    const fecha = fechaLarga(new Date(match.date));
+    box.innerHTML = `
+      <div class="arg-vs">VS</div>
+      <div class="arg-countdown">
+        <div class="countdown-bloque"><div class="countdown-num" id="cdH">00</div><div class="countdown-lbl">horas</div></div>
+        <div class="countdown-sep">:</div>
+        <div class="countdown-bloque"><div class="countdown-num" id="cdM">00</div><div class="countdown-lbl">min</div></div>
+        <div class="countdown-sep">:</div>
+        <div class="countdown-bloque"><div class="countdown-num" id="cdS">00</div><div class="countdown-lbl">seg</div></div>
+      </div>
+      <div class="arg-ko-fecha">${hora} hs · ${fecha}</div>`;
+    iniciarCountdown(match.date);
+  } else {
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval=null; }
+    const etiq = isLive ? match.clock : 'Final';
+    box.innerHTML = `
+      <div class="arg-score-row">
+        <div class="arg-score-n">${argScore}</div>
+        <div class="arg-score-sep">-</div>
+        <div class="arg-score-n">${rivScore}</div>
+      </div>
+      <div class="arg-clock">${etiq}</div>`;
+  }
+}
+
+/* ── Vista partido normal ── */
+function mostrarPartido(match) {
+  ocultarTodo();
+  document.getElementById('vistaPartido').classList.add('activa');
+  document.getElementById('logoHome').src   = match.logoHome;
+  document.getElementById('logoAway').src   = match.logoAway;
+  document.getElementById('nombreHome').textContent = match.nameHome.toUpperCase();
+  document.getElementById('nombreAway').textContent = match.nameAway.toUpperCase();
+  document.getElementById('faseTxt').textContent    = match.fase;
+  const isLive = match.state==='in', isPre=match.state==='pre';
+  document.getElementById('liveBadge').style.display = isLive?'flex':'none';
+  const box = document.getElementById('scorebox');
+  if (isPre) {
+    box.innerHTML=`<div class="vs-txt">VS</div><div class="ko-hora">${horaAR(match.date)} hs</div><div class="ko-fecha">${fechaLarga(new Date(match.date))}</div>`;
+  } else {
+    box.innerHTML=`<div class="score-row"><div class="score-n">${match.homeScore}</div><div class="score-guion">-</div><div class="score-n">${match.awayScore}</div></div><div class="score-clock">${isLive?match.clock:'Final'}</div>`;
+  }
+}
+
+/* ── Slides rotativas ── */
+let slideTimer = null;
+let slideActual = 0;
+let slidesDisponibles = [];
+
+function mostrarSlides(proximos, resultados) {
+  ocultarTodo();
+  slidesDisponibles = [];
+  if (proximos.length > 0) slidesDisponibles.push('proximos');
+  if (resultados.length > 0) slidesDisponibles.push('resultados');
+  if (slidesDisponibles.length === 0) return;
+
+  /* Renderizar próximos (de a 2) */
+  if (proximos.length > 0) {
+    const grid = document.getElementById('proximosGrid');
+    grid.innerHTML = '';
+    document.getElementById('fechaProx').textContent = fechaLarga(new Date()).toUpperCase();
+    const mostrar = proximos.slice(0,2);
+    for (const m of mostrar) {
+      grid.innerHTML += `
+        <div class="proximo-item">
+          <div class="prox-hora">${horaAR(m.date)}</div>
+          <div class="prox-sep"></div>
+          <div class="prox-equipos">
+            <img class="prox-logo" src="${m.logoHome}" alt="">
+            <div class="prox-nombre">${m.nameHome.toUpperCase()}</div>
+            <div class="prox-vs">VS</div>
+            <div class="prox-nombre">${m.nameAway.toUpperCase()}</div>
+            <img class="prox-logo" src="${m.logoAway}" alt="">
+          </div>
+          <div class="prox-grupo">${m.fase}</div>
+        </div>`;
+    }
+  }
+
+  /* Renderizar resultados */
+  if (resultados.length > 0) {
+    const grid = document.getElementById('resultadosGrid');
+    grid.innerHTML = '';
+    document.getElementById('fechaRes').textContent = fechaLarga(new Date()).toUpperCase();
+    const mostrar = resultados.slice(0,2);
+    for (const m of mostrar) {
+      grid.innerHTML += `
+        <div class="resultado-item">
+          <div class="res-equipo">
+            <img class="res-logo" src="${m.logoHome}" alt="">
+            <div class="res-nombre">${m.nameHome.toUpperCase()}</div>
+          </div>
+          <div class="res-score-block">
+            <div class="res-gol">${m.homeScore}</div>
+            <div class="res-sep">-</div>
+            <div class="res-gol">${m.awayScore}</div>
+          </div>
+          <div class="res-equipo" style="justify-content:flex-end;">
+            <div class="res-nombre" style="text-align:right;">${m.nameAway.toUpperCase()}</div>
+            <img class="res-logo" src="${m.logoAway}" alt="">
+          </div>
+        </div>`;
+    }
+  }
+
+  slideActual = 0;
+  mostrarSlideActual();
+  if (slideTimer) clearInterval(slideTimer);
+  if (slidesDisponibles.length > 1) {
+    slideTimer = setInterval(() => {
+      slideActual = (slideActual + 1) % slidesDisponibles.length;
+      mostrarSlideActual();
+    }, SLIDE_MS);
+  }
+}
+
+function mostrarSlideActual() {
+  document.getElementById('vistaProximos').classList.remove('activa');
+  document.getElementById('vistaResultados').classList.remove('activa');
+  const cual = slidesDisponibles[slideActual];
+  if (cual === 'proximos')   document.getElementById('vistaProximos').classList.add('activa');
+  if (cual === 'resultados') document.getElementById('vistaResultados').classList.add('activa');
+}
+
+function ocultarTodo() {
+  ['vistaArg','vistaPartido','vistaProximos','vistaResultados'].forEach(id => {
+    document.getElementById(id).classList.remove('activa');
+  });
+  if (slideTimer) { clearInterval(slideTimer); slideTimer=null; }
+}
+
+/* ── Build match ── */
+function buildMatch(e, c) {
+  const home = c.competitors?.find(x=>x.homeAway==='home')||{};
+  const away = c.competitors?.find(x=>x.homeAway==='away')||{};
+  return {
+    date:      e.date,
+    state:     c.status?.type?.state,
+    clock:     c.status?.displayClock||'',
+    homeScore: home.score??0,
+    awayScore: away.score??0,
+    abbrHome:  home.team?.abbreviation||'',
+    abbrAway:  away.team?.abbreviation||'',
+    nameHome:  tradEquipo(home.team?.abbreviation||'', home.team?.displayName||'Local'),
+    nameAway:  tradEquipo(away.team?.abbreviation||'', away.team?.displayName||'Visitante'),
+    logoHome:  home.team?.logo||'',
+    logoAway:  away.team?.logo||'',
+    fase:      traducirFase(e.season?.slug||''),
+  };
+}
+
+/* ── Lógica principal ── */
+async function fetchAndRender() {
+  try {
+    const res    = await fetch(ESPN);
+    const data   = await res.json();
+    const events = data.events||[];
+    const now    = Date.now();
+
+    let argMatch     = null;
+    let otroDestacado = null;
+    const proximos   = [];
+    const resultados = [];
+
+    for (const e of events) {
+      const c     = e.competitions?.[0];
+      if (!c) continue;
+      const m     = buildMatch(e,c);
+      const state = m.state;
+      const diff  = (new Date(m.date) - now) / 3600000;
+      const diffFT= (now - new Date(m.date)) / 3600000;
+      const tieneArg = esArgentina({displayName:m.nameHome,abbreviation:m.abbrHome}) ||
+                       esArgentina({displayName:m.nameAway,abbreviation:m.abbrAway});
+
+      if (tieneArg) {
+        /* Argentina: siempre destacado */
+        if (state === 'in' || state === 'pre' || (state==='post' && diffFT <= HORAS_DESP)) {
+          argMatch = m;
+        }
+      } else {
+        /* Otro partido: destacado si en vivo, a 15 min, o recién terminado */
+        if (!otroDestacado) {
+          if (state==='in') otroDestacado = m;
+          else if (state==='pre' && diff>=0 && diff<=HORAS_ANTES) otroDestacado = m;
+          else if (state==='post' && diffFT>=0 && diffFT<=HORAS_DESP) otroDestacado = m;
+        }
+      }
+
+      /* Clasificar para slides */
+      if (state==='pre' && !tieneArg) proximos.push(m);
+      if (state==='post') resultados.push(m);
+    }
+
+    /* Prioridad: Argentina > partido en vivo/próximo > slides */
+    if (argMatch) {
+      mostrarArgentina(argMatch);
+    } else if (otroDestacado) {
+      mostrarPartido(otroDestacado);
+    } else {
+      mostrarSlides(proximos, resultados);
+    }
+
+  } catch(err) {
+    console.error('ESPN error:', err);
+  }
+}
+
+fetchAndRender();
+setInterval(fetchAndRender, 30000);
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1500">
+<title>Mundial 2026</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Impact&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  width:1500px; height:500px;
+  overflow:hidden; background:#000;
+  font-family:'Arial Black',Arial,sans-serif;
+}
+
+/* ══ FONDO BANDERA ARGENTINA ══ */
+.bg-flag { position:fixed; inset:0; display:flex; flex-direction:column; z-index:0; }
+.f-cel  { flex:1; background:#74ACDF; }
+.f-wht  { flex:1; background:#FFFFFF; }
+.f-cel2 { flex:1; background:#74ACDF; }
+
+.sol-wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:1; }
+.sol { width:210px; height:210px; opacity:0.15; }
+
+/* ══ VISTAS ══ */
+.vista { display:none; position:absolute; inset:0; z-index:10; align-items:center; justify-content:center; }
+.vista.activa { display:flex; }
+
+/* ══ CARD BASE ══ */
+.card {
+  position:relative;
+  background:#080808;
+  border-top:7px solid #C9A227;
+  border-bottom:7px solid #C9A227;
+  border-left:3px solid #C9A227;
+  border-right:3px solid #C9A227;
+  overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+
+/* Textura 26 */
+.bg26 {
+  position:absolute; inset:0;
+  display:grid; opacity:0.032;
+  font-size:66px; font-weight:900; color:#fff;
+  pointer-events:none; user-select:none; letter-spacing:-1px; overflow:hidden;
+}
+.n26 { display:flex; align-items:center; justify-content:center; }
+
+/* ══════════════════════════════════════
+   VISTA 1: ARGENTINA (modo especial)
+══════════════════════════════════════ */
+#vistaArg .card {
+  width:1240px; height:420px;
+  background: linear-gradient(135deg, #4a9fd4 0%, #74ACDF 40%, #5aaee0 60%, #3d8fc4 100%);
+  border-top:8px solid #F6B40E;
+  border-bottom:8px solid #F6B40E;
+  border-left:4px solid #F6B40E;
+  border-right:4px solid #F6B40E;
+}
+
+/* Estrellas de fondo para Argentina */
+.arg-stars {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+  opacity:0.08; font-size:180px; letter-spacing:60px;
+  color:#fff;
+}
+
+.arg-header {
+  display:flex; align-items:center; gap:20px;
+  margin-bottom:18px; position:relative; z-index:2;
+}
+.arg-badge {
+  background:#F6B40E; color:#000;
+  font-size:12px; font-weight:900;
+  letter-spacing:3px; padding:5px 20px;
+  text-transform:uppercase;
+  font-family:'Arial Black',Arial,sans-serif;
+}
+.arg-fase {
+  color:#fff; font-size:14px; font-weight:700;
+  letter-spacing:3px; text-transform:uppercase;
+  font-family:Arial,sans-serif;
+  text-shadow:0 1px 3px rgba(0,0,0,0.4);
+}
+
+.arg-row {
+  display:flex; align-items:center; justify-content:center;
+  width:100%; position:relative; z-index:2;
+}
+
+.arg-equipo {
+  display:flex; flex-direction:column; align-items:center;
+  gap:14px; width:380px;
+}
+.arg-logo { width:130px; height:88px; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); }
+.arg-nombre {
+  color:#fff;
+  font-family:Impact,'Arial Black',Arial,sans-serif;
+  font-size:42px; letter-spacing:5px;
+  text-transform:uppercase; text-align:center;
+  text-shadow:2px 2px 8px rgba(0,0,0,0.5);
+  line-height:1.1;
+}
+.arg-nombre.arg-team {
+  color:#F6B40E;
+  font-size:48px;
+  text-shadow:2px 2px 0px rgba(0,0,0,0.6);
+}
+
+.arg-sep {
+  width:2px; height:210px;
+  background:linear-gradient(180deg, transparent, rgba(255,255,255,0.6) 25%, rgba(255,255,255,0.6) 75%, transparent);
+  margin:0 10px;
+}
+
+.arg-scorebox {
+  width:300px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px;
+}
+
+/* VS con countdown */
+.arg-vs {
+  color:#fff; font-family:Impact,'Arial Black',Arial,sans-serif;
+  font-size:80px; letter-spacing:8px; line-height:1;
+  text-shadow:3px 3px 0px rgba(0,0,0,0.4);
+}
+.arg-countdown {
+  display:flex; gap:8px; align-items:center;
+}
+.countdown-bloque {
+  display:flex; flex-direction:column; align-items:center;
+  background:rgba(0,0,0,0.25); padding:6px 12px; border-radius:4px;
+}
+.countdown-num {
+  color:#fff; font-family:Impact,'Arial Black',Arial,sans-serif;
+  font-size:44px; line-height:1;
+  text-shadow:2px 2px 0px rgba(0,0,0,0.5);
+}
+.countdown-lbl {
+  color:rgba(255,255,255,0.7); font-size:10px;
+  letter-spacing:2px; text-transform:uppercase;
+  font-family:Arial,sans-serif; margin-top:2px;
+}
+.countdown-sep {
+  color:#F6B40E; font-size:36px; font-weight:900;
+  margin-bottom:20px; font-family:Impact,Arial,sans-serif;
+}
+.arg-ko-fecha {
+  color:rgba(255,255,255,0.75); font-size:13px;
+  letter-spacing:2px; text-transform:uppercase;
+  font-family:Arial,sans-serif; margin-top:4px;
+}
+
+/* Score en vivo ARG */
+.arg-score-row { display:flex; align-items:center; }
+.arg-score-n {
+  color:#fff; font-family:Impact,'Arial Black',Arial,sans-serif;
+  font-size:130px; font-weight:900; line-height:1;
+  width:110px; text-align:center;
+  text-shadow:3px 3px 0px rgba(0,0,0,0.4);
+}
+.arg-score-sep {
+  color:#F6B40E; font-family:Impact,Arial,sans-serif;
+  font-size:110px; font-weight:900; line-height:1;
+  padding-bottom:10px;
+}
+.arg-clock {
+  color:#fff; font-size:22px; font-weight:900;
+  letter-spacing:2px; font-family:Arial,sans-serif;
+  text-shadow:1px 1px 4px rgba(0,0,0,0.5);
+}
+
+.live-badge-arg {
+  display:none; align-items:center; gap:8px;
+  background:rgba(255,0,0,0.2); padding:4px 12px;
+  border:1px solid #ff4444;
+}
+.live-badge-arg .ldot { width:9px; height:9px; border-radius:50%; background:#ff4444; animation:blink 1s ease-in-out infinite; }
+.live-badge-arg span { color:#ff4444; font-size:12px; font-weight:900; letter-spacing:2px; font-family:Arial,sans-serif; }
+
+/* ══════════════════════════════════════
+   VISTA 2: PARTIDO NORMAL DESTACADO
+══════════════════════════════════════ */
+#vistaPartido .card { width:1180px; height:390px; }
+#vistaPartido .bg26 { grid-template-columns:repeat(13,1fr); grid-template-rows:repeat(4,1fr); }
+
+.partido-header { display:flex; align-items:center; gap:18px; margin-bottom:20px; position:relative; z-index:2; }
+.wc-badge { background:#C9A227; color:#000; font-size:11px; font-weight:900; letter-spacing:3px; padding:5px 18px; text-transform:uppercase; }
+.fase-txt { color:#C9A227; font-size:13px; font-weight:700; letter-spacing:3px; text-transform:uppercase; font-family:Arial,sans-serif; }
+.live-badge { display:none; align-items:center; gap:10px; background:rgba(255,0,0,0.15); border:2px solid #ff3333; padding:6px 18px; }
+.live-dot { width:12px; height:12px; border-radius:50%; background:#ff3333; animation:blink 1s ease-in-out infinite; flex-shrink:0; }
+.live-badge span { color:#ff3333; font-size:20px; font-weight:900; letter-spacing:3px; font-family:'Arial Black',Arial,sans-serif; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+.partido-row { display:flex; align-items:center; justify-content:center; width:100%; position:relative; z-index:2; }
+.equipo { display:flex; flex-direction:column; align-items:center; gap:12px; width:370px; }
+.equipo-logo { width:160px; height:106px; object-fit:contain; }
+.equipo-nombre { color:#fff; font-size:30px; font-weight:900; letter-spacing:3px; text-transform:uppercase; text-align:center; line-height:1.2; }
+.sep-v { width:2px; height:190px; background:linear-gradient(180deg,transparent,#C9A227 25%,#C9A227 75%,transparent); margin:0 8px; }
+.scorebox { width:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+.score-row { display:flex; align-items:center; }
+.score-n { color:#fff; font-size:120px; font-weight:900; line-height:1; width:100px; text-align:center; }
+.score-guion { color:#C9A227; font-size:100px; font-weight:900; line-height:1; padding-bottom:8px; }
+.score-clock { color:#C9A227; font-size:20px; font-weight:900; letter-spacing:2px; font-family:Arial,sans-serif; }
+.vs-txt { color:#C9A227; font-size:72px; font-weight:900; letter-spacing:6px; line-height:1; }
+.ko-hora { color:#fff; font-size:24px; font-weight:700; letter-spacing:2px; font-family:Arial,sans-serif; margin-top:6px; }
+.ko-fecha { color:#666; font-size:12px; letter-spacing:2px; text-transform:uppercase; font-family:Arial,sans-serif; margin-top:4px; }
+
+/* ══════════════════════════════════════
+   VISTAS 3 y 4: SLIDES ROTATIVAS
+══════════════════════════════════════ */
+.card-slide { width:1380px; height:430px; padding:0 28px; }
+.card-slide .bg26 { grid-template-columns:repeat(15,1fr); grid-template-rows:repeat(4,1fr); }
+
+.slide-header { display:flex; align-items:center; gap:18px; margin-bottom:16px; position:relative; z-index:2; width:100%; }
+.slide-titulo { color:#C9A227; font-size:13px; font-weight:700; letter-spacing:4px; text-transform:uppercase; font-family:Arial,sans-serif; }
+.slide-fecha { color:#555; font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:Arial,sans-serif; margin-left:auto; }
+
+/* Partidos de a 2 — grandes */
+.proximos-grid { display:flex; flex-direction:column; gap:10px; width:100%; position:relative; z-index:2; }
+.proximo-item {
+  display:flex; align-items:center;
+  background:#111; border-left:4px solid #C9A227;
+  padding:14px 24px; gap:20px; height:86px;
+}
+.prox-hora { color:#C9A227; font-size:28px; font-weight:900; font-family:Arial,sans-serif; letter-spacing:1px; min-width:80px; }
+.prox-sep { width:2px; height:56px; background:#2a2a2a; }
+.prox-equipos { flex:1; display:flex; align-items:center; gap:16px; }
+.prox-logo { width:48px; height:32px; object-fit:contain; }
+.prox-vs { color:#555; font-size:18px; font-weight:900; letter-spacing:2px; padding:0 8px; }
+.prox-nombre { color:#fff; font-size:26px; font-weight:900; letter-spacing:2px; text-transform:uppercase; }
+.prox-grupo { color:#444; font-size:11px; letter-spacing:2px; text-transform:uppercase; font-family:Arial,sans-serif; margin-left:auto; }
+
+/* Resultados */
+.resultados-grid { display:flex; flex-direction:column; gap:10px; width:100%; position:relative; z-index:2; }
+.resultado-item {
+  display:flex; align-items:center;
+  background:#0e0e0e; border-left:4px solid #333;
+  padding:12px 24px; gap:20px; height:86px;
+}
+.res-equipo { display:flex; align-items:center; gap:12px; flex:1; }
+.res-logo { width:44px; height:30px; object-fit:contain; }
+.res-nombre { color:#ccc; font-size:24px; font-weight:900; letter-spacing:2px; text-transform:uppercase; }
+.res-score-block { display:flex; align-items:center; gap:0; min-width:120px; justify-content:center; }
+.res-gol { color:#fff; font-size:40px; font-weight:900; font-family:'Arial Black',Arial,sans-serif; width:44px; text-align:center; }
+.res-sep { color:#444; font-size:36px; font-weight:900; padding-bottom:4px; }
+
+/* Footer */
+.footer { position:fixed; bottom:12px; left:0; right:0; display:flex; justify-content:center; gap:20px; z-index:20; }
+.footer-txt { color:rgba(0,0,0,0.4); font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; font-family:Arial,sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- Fondo bandera -->
+<div class="bg-flag"><div class="f-cel"></div><div class="f-wht"></div><div class="f-cel2"></div></div>
+
+<!-- Sol de Mayo -->
+<div class="sol-wrap">
+  <svg class="sol" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(100,100)">
+      <g stroke="#F6B40E" stroke-width="6" stroke-linecap="round">
+        <line x1="0" y1="-55" x2="0" y2="-90"/><line x1="0" y1="55" x2="0" y2="90"/>
+        <line x1="-55" y1="0" x2="-90" y2="0"/><line x1="55" y1="0" x2="90" y2="0"/>
+        <line x1="-39" y1="-39" x2="-64" y2="-64"/><line x1="39" y1="-39" x2="64" y2="-64"/>
+        <line x1="-39" y1="39" x2="-64" y2="64"/><line x1="39" y1="39" x2="64" y2="64"/>
+      </g>
+      <g fill="#F6B40E">
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(22.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(67.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(112.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(157.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(202.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(247.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(292.5)"/>
+        <path d="M0,-48 Q5,-65 0,-75 Q-5,-65 0,-48Z" transform="rotate(337.5)"/>
+      </g>
+      <circle r="44" fill="#F6B40E"/>
+      <circle r="40" fill="#F6B40E" stroke="#85450A" stroke-width="1.5"/>
+      <ellipse cx="-13" cy="-10" rx="5" ry="7" fill="#85450A"/>
+      <ellipse cx="13" cy="-10" rx="5" ry="7" fill="#85450A"/>
+      <ellipse cx="0" cy="2" rx="4" ry="3" fill="#85450A"/>
+      <path d="M-14,14 Q0,24 14,14" stroke="#85450A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="-22" cy="8" r="6" fill="#E8960A" opacity="0.5"/>
+      <circle cx="22" cy="8" r="6" fill="#E8960A" opacity="0.5"/>
+    </g>
+  </svg>
+</div>
+
+<!-- VISTA 1: Argentina -->
+<div class="vista" id="vistaArg">
+  <div class="card">
+    <div class="arg-stars">⭐⭐⭐</div>
+    <div class="arg-header">
+      <div class="arg-badge">FIFA World Cup 2026™</div>
+      <div class="arg-fase" id="argFase">Fase de Grupos</div>
+      <div class="live-badge-arg" id="argLive"><div class="ldot"></div><span>EN VIVO</span></div>
+    </div>
+    <div class="arg-row">
+      <div class="arg-equipo">
+        <img class="arg-logo" id="argLogoHome" src="" alt="">
+        <div class="arg-nombre" id="argNombreHome">—</div>
+      </div>
+      <div class="arg-sep"></div>
+      <div class="arg-scorebox" id="argScorebox"></div>
+      <div class="arg-sep"></div>
+      <div class="arg-equipo">
+        <img class="arg-logo" id="argLogoAway" src="" alt="">
+        <div class="arg-nombre" id="argNombreAway">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VISTA 2: Partido normal destacado -->
+<div class="vista" id="vistaPartido">
+  <div class="card">
+    <div class="bg26" id="bg26A"></div>
+    <div class="partido-header">
+      <div class="wc-badge">FIFA World Cup 2026™</div>
+      <div class="live-badge" id="liveBadge"><div class="live-dot"></div><span>EN VIVO</span></div>
+    </div>
+    <div class="partido-row">
+      <div class="equipo"><img class="equipo-logo" id="logoHome" src="" alt=""><div class="equipo-nombre" id="nombreHome">—</div></div>
+      <div class="sep-v"></div>
+      <div class="scorebox" id="scorebox"></div>
+      <div class="sep-v"></div>
+      <div class="equipo"><img class="equipo-logo" id="logoAway" src="" alt=""><div class="equipo-nombre" id="nombreAway">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- VISTA 3: Próximos partidos -->
+<div class="vista" id="vistaProximos">
+  <div class="card card-slide">
+    <div class="bg26" id="bg26B"></div>
+    <div class="slide-header">
+      <div class="wc-badge">FIFA World Cup 2026™</div>
+      <div class="slide-titulo">Próximos partidos</div>
+      <div class="slide-fecha" id="fechaProx"></div>
+    </div>
+    <div class="proximos-grid" id="proximosGrid"></div>
+  </div>
+</div>
+
+<!-- VISTA 4: Resultados -->
+<div class="vista" id="vistaResultados">
+  <div class="card card-slide">
+    <div class="bg26" id="bg26C"></div>
+    <div class="slide-header">
+      <div class="wc-badge">FIFA World Cup 2026™</div>
+      <div class="slide-titulo" style="color:#fff;">Hoy jugaron</div>
+      <div class="slide-fecha" id="fechaRes"></div>
+    </div>
+    <div class="resultados-grid" id="resultadosGrid"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-txt">Municipalidad de El Calafate</div>
+  <div class="footer-txt">·</div>
+  <div class="footer-txt" id="reloj"></div>
+</div>
+
+<script>
+const ESPN        = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const HORAS_ANTES = 0.25;  /* 15 minutos */
+const HORAS_DESP  = 1;
+const SLIDE_MS    = 8000;  /* 8 segundos por slide rotativa */
+
+/* Detectar Argentina por abreviación o nombre */
+function esArgentina(team) {
+  const n = (team?.displayName || '').toLowerCase();
+  const a = (team?.abbreviation || '').toUpperCase();
+  return a === 'ARG' || n.includes('argentina');
+}
+
+/* Textura 26 */
+function llenar26(id, cols, rows) {
+  const el = document.getElementById(id);
+  el.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+  el.style.gridTemplateRows    = `repeat(${rows},1fr)`;
+  for (let i = 0; i < cols*rows; i++) {
+    const d = document.createElement('div'); d.className='n26'; d.textContent='26'; el.appendChild(d);
+  }
+}
+llenar26('bg26A',13,4); llenar26('bg26B',15,4); llenar26('bg26C',15,4);
+
+/* Reloj */
+function tick() { document.getElementById('reloj').textContent = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }
+setInterval(tick,1000); tick();
+
+/* Fecha helpers */
+const DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function horaAR(dateStr) {
+  const ar = new Date(new Date(dateStr).getTime() - 3*3600000);
+  return `${ar.getUTCHours().toString().padStart(2,'0')}:${ar.getUTCMinutes().toString().padStart(2,'0')}`;
+}
+function fechaLarga(d) {
+  const ar = new Date(d.getTime() - 3*3600000);
+  return `${DIAS[ar.getUTCDay()]}, ${ar.getUTCDate()} de ${MESES[ar.getUTCMonth()]}`;
+}
+
+/* Diccionario de equipos → español */
+const EQUIPOS = {
+  /* A */
+  'ARG': 'Argentina',       'AUS': 'Australia',       'AUT': 'Austria',
+  /* B */
+  'BEL': 'Bélgica',         'BIH': 'Bosnia-Herzegovina','BRA': 'Brasil',
+  /* C */
+  'CMR': 'Camerún',         'CAN': 'Canadá',           'CHL': 'Chile',
+  'CHN': 'China',            'COL': 'Colombia',         'COD': 'Congo DR',
+  'CRI': 'Costa Rica',      'CIV': 'Costa de Marfil',  'HRV': 'Croacia',
+  'CZE': 'Chequia',         'CUW': 'Curazao',
+  /* D */
+  'DNK': 'Dinamarca',
+  /* E */
+  'ECU': 'Ecuador',         'EGY': 'Egipto',           'ENG': 'Inglaterra',
+  /* F */
+  'FRA': 'Francia',
+  /* G */
+  'DEU': 'Alemania',        'GER': 'Alemania',         'GHA': 'Ghana',
+  /* H */
+  'HTI': 'Haití',           'HUN': 'Hungría',
+  /* I */
+  'IRN': 'Irán',            'ISL': 'Islandia',         'IDN': 'Indonesia',
+  /* J */
+  'JAM': 'Jamaica',         'JPN': 'Japón',
+  /* K */
+  'KAZ': 'Kazajistán',      'KOR': 'Corea del Sur',    'KWT': 'Kuwait',
+  /* M */
+  'MEX': 'México',          'MAR': 'Marruecos',
+  /* N */
+  'NLD': 'Países Bajos',    'NZL': 'Nueva Zelanda',    'NGA': 'Nigeria',
+  /* P */
+  'PRY': 'Paraguay',        'PER': 'Perú',             'POL': 'Polonia',
+  'PRT': 'Portugal',
+  /* Q */
+  'QAT': 'Catar',
+  /* R */
+  'ROU': 'Rumania',         'RUS': 'Rusia',
+  /* S */
+  'SAU': 'Arabia Saudita',  'SCO': 'Escocia',          'SEN': 'Senegal',
+  'SRB': 'Serbia',          'SVK': 'Eslovaquia',       'SVN': 'Eslovenia',
+  'ZAF': 'Sudáfrica',       'ESP': 'España',            'SWE': 'Suecia',
+  'CHE': 'Suiza',           'SUI': 'Suiza',
+  /* T */
+  'THA': 'Tailandia',       'TUN': 'Túnez',            'TUR': 'Türkiye',
+  /* U */
+  'UKR': 'Ucrania',         'URY': 'Uruguay',           'USA': 'Estados Unidos',
+  /* V */
+  'VEN': 'Venezuela',
+  /* W */
+  'WAL': 'Gales',
+  /* Z */
+  'ZMB': 'Zambia',
+  /* Nombres en inglés por si la abbr falla */
+  'England': 'Inglaterra',       'Germany': 'Alemania',
+  'France': 'Francia',           'Brazil': 'Brasil',
+  'Portugal': 'Portugal',        'Spain': 'España',
+  'Netherlands': 'Países Bajos', 'Belgium': 'Bélgica',
+  'Switzerland': 'Suiza',        'Croatia': 'Croacia',
+  'Denmark': 'Dinamarca',        'Sweden': 'Suecia',
+  'Poland': 'Polonia',           'Serbia': 'Serbia',
+  'Ukraine': 'Ucrania',          'Romania': 'Rumania',
+  'Hungary': 'Hungría',          'Slovakia': 'Eslovaquia',
+  'Slovenia': 'Eslovenia',       'Scotland': 'Escocia',
+  'Wales': 'Gales',              'Austria': 'Austria',
+  'Turkey': 'Turquía',           'Türkiye': 'Türkiye',
+  'Morocco': 'Marruecos',        'Senegal': 'Senegal',
+  'Nigeria': 'Nigeria',          'Ghana': 'Ghana',
+  'Cameroon': 'Camerún',         'Tunisia': 'Túnez',
+  'South Africa': 'Sudáfrica',   'Egypt': 'Egipto',
+  'Congo DR': 'Congo DR',        "Ivory Coast": 'Costa de Marfil',
+  'Mexico': 'México',            'United States': 'Estados Unidos',
+  'Canada': 'Canadá',            'Argentina': 'Argentina',
+  'Brazil': 'Brasil',            'Uruguay': 'Uruguay',
+  'Colombia': 'Colombia',        'Ecuador': 'Ecuador',
+  'Chile': 'Chile',              'Paraguay': 'Paraguay',
+  'Peru': 'Perú',                'Venezuela': 'Venezuela',
+  'Bolivia': 'Bolivia',          'Japan': 'Japón',
+  'South Korea': 'Corea del Sur','Australia': 'Australia',
+  'Iran': 'Irán',                'Saudi Arabia': 'Arabia Saudita',
+  'Qatar': 'Catar',              'Indonesia': 'Indonesia',
+  'New Zealand': 'Nueva Zelanda','Haiti': 'Haití',
+  'Jamaica': 'Jamaica',          'Costa Rica': 'Costa Rica',
+  'Honduras': 'Honduras',        'Panama': 'Panamá',
+  'Bosnia-Herzegovina': 'Bosnia-Herzegovina',
+  'Czech Republic': 'Chequia',   'Czechia': 'Chequia',
+};
+
+function tradEquipo(abbr, displayName) {
+  return EQUIPOS[abbr] || EQUIPOS[displayName] || displayName;
+}
+
+/* Fases */
+const FASES = {
+  'group-stage':'Fase de Grupos','group stage':'Fase de Grupos',
+  'round-of-32':'16avos de Final','round of 32':'16avos de Final',
+  'round-of-16':'8vos de Final','round of 16':'8vos de Final',
+  'quarterfinal':'4tos de Final','quarter-final':'4tos de Final',
+  'semifinal':'Semifinal','semi-final':'Semifinal',
+  '3rd':'3er Puesto','third':'3er Puesto',
+  'final':'Final',
+};
 function traducirFase(slug) {
   if (!slug) return 'Copa del Mundo 2026';
   const s = slug.toLowerCase();
